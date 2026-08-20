@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>光学方案计算器 · 离线版</title>
+  <style>
+<!-- INLINE_CSS -->
+  .standalone-note{margin:0 0 14px;padding:9px 12px;border:1px solid #cfdae4;border-radius:7px;color:#4f6578;background:#f4f8fb;font-size:9px}
+  .standalone-camera-row{display:grid;grid-template-columns:180px 1fr;gap:12px;margin-bottom:15px}
+  .standalone-camera-row select,.standalone-camera-row input{min-height:39px;width:100%;padding:0 10px;border:1px solid var(--work-line-strong);border-radius:6px;color:var(--work-ink);background:#fff;font-size:11px;font-weight:650}
+  .standalone-camera-row label{display:grid;gap:6px;color:#4f5e6c;font-size:10px;font-weight:650}
+  .standalone-camera-row input:not([readonly]){border-color:#dfd6b8;background:var(--work-input)}
+  .standalone-validation{margin-top:15px;padding:12px 14px;border:1px solid #edc3c3;border-radius:7px;color:var(--work-red);background:var(--work-red-soft);font-size:9px;line-height:1.6}
+  .standalone-motion{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+  .standalone-result-value{margin:6px 0 0;color:var(--work-blue);font-size:35px;letter-spacing:-.055em}
+  .standalone-status{display:inline-flex;min-height:27px;align-items:center;padding:0 10px;border-radius:999px;font-size:10px;font-weight:700;white-space:nowrap}
+  .standalone-parameter-grid{display:grid;grid-template-columns:repeat(2,1fr);border-top:1px solid var(--work-line-strong);border-left:1px solid var(--work-line-strong)}
+  .standalone-parameter-grid .parameter-group{min-width:0}
+  .standalone-footer{display:flex;justify-content:space-between;gap:20px;padding:18px 0;color:var(--work-muted);font-size:8px}
+  @media(max-width:760px){.standalone-camera-row,.standalone-motion,.standalone-parameter-grid{grid-template-columns:1fr}}
+  </style>
+</head>
+<body>
+  <main class="workbench-shell">
+    <header class="workbench-topbar">
+      <div class="brand-lockup"><span class="brand-mark">OC</span><div><strong>光学方案计算器</strong><small>单文件离线版</small></div></div>
+      <div class="topbar-context"><span>二维线扫</span><strong>有限共轭 · 理论选型值</strong></div>
+      <div class="topbar-status"><span id="dirty-label" class="unsaved-dot" hidden>待重新计算</span><span id="top-status" class="standalone-status scheme-status--review">可行但需复核</span></div>
+    </header>
+
+    <div class="workbench-page">
+      <div class="page-heading"><div><p>2D OPTICAL DESIGN / OFFLINE</p><h1>光学方案工程表</h1></div><span>不登录 · 不上传 · 不访问网络 · 所有计算在当前浏览器完成</span></div>
+      <nav class="mode-tabs" aria-label="光学方案类型">
+        <button class="active"><b>01</b><span><strong>2D 成像方案</strong><small>当前可用</small></span></button>
+        <button disabled title="后续阶段"><b>02</b><span><strong>3D 三角测量</strong><small>后续阶段</small></span></button>
+      </nav>
+
+      <p class="standalone-note">本文件由项目构建脚本从权威光学求解模块生成。若文件日期早于最新程序，请重新执行离线构建后再用于工程计算。</p>
+
+      <div class="workbench-grid">
+        <section class="input-sheet">
+          <div class="section-heading"><span>01</span><div><h2>相机与传感器</h2><p>指定相机是镜头选型的前提</p></div></div>
+          <div class="standalone-camera-row">
+            <label>参数来源<select id="camera-source"><option value="catalog">内置型号</option><option value="custom">自定义相机</option></select></label>
+            <label>相机型号<input id="camera-model" value="MV-CL042-91GC" readonly></label>
+          </div>
+          <div class="field-grid field-grid--3">
+            <label class="work-field"><span class="work-field__label">横向像素数</span><span class="work-field__control work-field--derived"><input id="pixels" type="number" value="4096" readonly><span>px</span></span></label>
+            <label class="work-field"><span class="work-field__label">行数</span><span class="work-field__control work-field--derived"><input id="rows" type="number" value="2" readonly><span>行</span></span></label>
+            <label class="work-field"><span class="work-field__label">像元尺寸</span><span class="work-field__control work-field--derived"><input id="pitch" type="number" value="7" readonly><span>μm</span></span></label>
+          </div>
+          <div class="derived-strip">
+            <span><small>传感器宽度</small><strong id="sensor-width">28.672 mm</strong></span><span><small>相机类型</small><strong>彩色线扫</strong></span><span><small>数据接口</small><strong>GigE</strong></span><span><small>镜头接口</small><strong>M42</strong></span>
+          </div>
+          <label class="work-field"><span class="work-field__label">设计最高行频<em>可选</em></span><span class="work-field__control work-field--derived"><input id="line-rate" type="number" value="28" readonly><span>kHz</span></span><small>自定义相机可留空；缺省时运动采样显示“无法判定”</small></label>
+
+          <div class="sheet-divider"></div>
+          <div class="section-heading"><span>02</span><div><h2>三个工作面与硬约束</h2><p>距离统一以物方主平面为基准</p></div></div>
+          <div class="plane-grid">
+            <div class="plane-card plane-card--near"><h3>近端工作面</h3><label class="work-field"><span class="work-field__label">物距</span><span class="work-field__control"><input id="near-distance" type="number" value="560"><span>mm</span></span></label><label class="work-field"><span class="work-field__label">原始视场需求</span><span class="work-field__control"><input id="near-fov" type="number" value="700"><span>mm</span></span></label></div>
+            <div class="plane-card plane-card--focus"><h3>对焦面</h3><label class="work-field"><span class="work-field__label">对焦距离<em>可选</em></span><span class="work-field__control"><input id="focus-distance" type="number" placeholder="自动"><span>mm</span></span><small>留空时自动计算</small></label><p><strong>空值自动平衡景深</strong><br>采用近、远端弥散圆要求相等的精确解，不是简单取中点。</p></div>
+            <div class="plane-card plane-card--far"><h3>远端工作面</h3><label class="work-field"><span class="work-field__label">物距</span><span class="work-field__control"><input id="far-distance" type="number" value="1400"><span>mm</span></span></label><label class="work-field"><span class="work-field__label">原始视场需求</span><span class="work-field__control"><input id="far-fov" type="number" value="1070"><span>mm</span></span></label></div>
+          </div>
+          <div class="field-grid field-grid--3">
+            <label class="work-field"><span class="work-field__label">全局视场设计余量</span><span class="work-field__control"><input id="margin" type="number" value="10"><span>%</span></span><small>同时作用于近端和远端；不属于光学公式</small></label>
+            <label class="work-field"><span class="work-field__label">最大允许物方像素当量<em>可选</em></span><span class="work-field__control"><input id="max-resolution" type="number" value="0.55" step="0.01"><span>mm/px</span></span><small>作为焦距筛选的硬约束</small></label>
+            <label class="work-field"><span class="work-field__label">最大允许 F 值<em>可选</em></span><span class="work-field__control"><input id="max-f-number" type="number" value="11" step="0.1"><span>F 值</span></span><small>默认 F/11；再大的 F 值表示光圈更小</small></label>
+          </div>
+
+          <div class="sheet-divider"></div>
+          <div class="section-heading"><span>03</span><div><h2>运动方向采样</h2><p>可选：校核固定相机的设计最高行频</p></div><div class="section-heading__aside"><label class="motion-toggle"><input id="motion-enabled" type="checkbox" checked><span></span>启用</label></div></div>
+          <div id="motion-fields" class="standalone-motion">
+            <label class="work-field"><span class="work-field__label">最大运行速度</span><span class="work-field__control"><input id="speed" type="number" value="60"><span>km/h</span></span></label>
+            <label class="work-field"><span class="work-field__label">目标纵向采样</span><span class="work-field__control"><input id="sample" type="number" value="0.8" step="0.1"><span>mm/line</span></span></label>
+          </div>
+          <div id="validation" class="standalone-validation" hidden></div>
+          <button id="calculate" class="calculate-button"><span>计算并推荐焦距</span><small>校核视场、分辨率、景深与运动采样</small></button>
+        </section>
+
+        <aside class="result-column">
+          <section class="result-card">
+            <div id="stale-banner" class="stale-banner" hidden><span>输入已变化</span><p>下方仍是上一次有效结果，请重新计算后再导出。</p></div>
+            <div class="result-card__head"><div><small>推荐结果</small><h2 id="recommended" class="standalone-result-value">18.0 mm</h2><p id="status-message"></p></div><span id="result-status" class="standalone-status scheme-status--review">可行但需复核</span></div>
+            <div class="result-metrics">
+              <span><small>连续焦距可行区间</small><strong id="focal-range"></strong></span><span><small>建议工作光圈</small><strong id="f-number"></strong></span><span><small>景深所需最低 F 值</small><strong id="required-f-number"></strong></span><span><small>目标工作区间</small><strong id="work-range"></strong></span><span><small>理论景深范围</small><strong id="dof-range"></strong></span><span><small>对焦位置</small><strong id="focus-result"></strong></span><span><small>近端像素当量</small><strong id="near-pixel"></strong></span><span><small>远端像素当量</small><strong id="far-pixel"></strong></span><span><small>所需行频</small><strong id="required-line-rate"></strong></span><span><small>运动采样</small><strong id="motion-status"></strong></span>
+            </div>
+            <div id="diffraction-warning" class="review-message"><b>!</b><p id="diffraction-text"></p></div>
+            <div id="no-result" class="no-result-message" hidden></div>
+          </section>
+          <figure class="fov-cone">
+            <figcaption><div><small>视场锥</small><strong>三个工作面的实际覆盖</strong></div><span id="cone-angle">物方主平面基准</span></figcaption>
+            <div id="cone-no-result" class="cone-empty" hidden>选出可行焦距后显示视场锥</div>
+            <div id="cone-stage" class="cone-stage">
+              <div class="cone-wedge"></div><div class="cone-axis"></div><div class="cone-ray cone-ray--top"></div><div class="cone-ray cone-ray--bottom"></div><div class="cone-camera"><i></i></div>
+              <div id="cone-near" class="cone-plane cone-plane--1"><i></i></div><div id="cone-focus" class="cone-plane cone-plane--2"><i></i></div><div id="cone-far" class="cone-plane cone-plane--3"><i></i></div>
+            </div>
+            <div id="cone-legend" class="cone-legend">
+              <span class="cone-legend__item cone-plane--1"><i></i><small id="cone-legend-1-distance"></small><strong id="cone-legend-1-fov"></strong></span>
+              <span class="cone-legend__item cone-plane--2"><i></i><small id="cone-legend-2-distance"></small><strong id="cone-legend-2-fov"></strong></span>
+              <span class="cone-legend__item cone-plane--3"><i></i><small id="cone-legend-3-distance"></small><strong id="cone-legend-3-fov"></strong></span>
+            </div>
+          </figure>
+          <div class="assumption-card"><strong>本次计算口径</strong><div><span>有限共轭理想薄透镜</span><span>弥散圆 = 2 × 像元</span><span id="focus-method"></span><span>550 nm 可见光参考波长</span></div><p>具体镜头主平面、畸变、MTF 与装调误差需在型号确定后复核。</p></div>
+        </aside>
+      </div>
+
+      <section class="output-panel candidate-panel"><div class="output-heading"><div><small>FOCAL CANDIDATES</small><h2>标准焦距筛选明细</h2><p>展示全部候选及淘汰原因，不使用隐藏评分。</p></div><span id="candidate-count" class="output-age"></span></div><div class="candidate-table-wrap"><table class="candidate-table"><thead><tr><th>标准焦距</th><th>近端实际 / 要求视场</th><th>远端实际 / 要求视场</th><th>远端像素当量</th><th>景深最低 / 设定光圈</th><th>判定与原因</th></tr></thead><tbody id="candidate-body"></tbody></table></div></section>
+
+      <section class="output-panel parameter-panel" id="optical-parameter-sheet"><div class="parameter-heading"><div><small>DELIVERABLE TABLE</small><h2>光学方案参数表</h2><p>白底排版，适合复制到 Word 或按 A4 横向打印。</p></div><div class="export-actions"><button id="copy-png">复制 PNG</button><button id="download-png">下载 PNG</button><button id="print-pdf">打印 / PDF</button></div></div><div id="parameter-stale" class="parameter-stale" hidden>输入已变化，导出已暂停；重新计算后恢复。</div><div id="export-message" class="export-message" hidden></div><div id="parameter-grid" class="standalone-parameter-grid"></div><footer><span>理论选型值 · 距离基准：物方主平面</span><span>实际镜头需复核主平面、畸变、MTF 与装调误差</span></footer></section>
+      <footer class="standalone-footer"><span>光学方案计算器 · 单文件离线版</span><span>生成日期：<!-- BUILD_DATE --></span></footer>
+    </div>
+  </main>
+  <script>
+<!-- INLINE_SCRIPT -->
+  </script>
+</body>
+</html>

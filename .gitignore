@@ -16,6 +16,7 @@
 # next.js
 /.next/
 /.vinext/
+/.vite/
 /out/
 
 # misc
@@ -38,3 +39,4 @@ yarn-error.log*
 /.wrangler/
 /outputs/
 /work/
+*.tsbuildinfo
