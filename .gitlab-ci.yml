@@ -10,12 +10,8 @@ pages:
     - x86
   before_script:
     - apk add --no-cache nodejs npm
-  cache:
-    key: ${CI_COMMIT_REF_SLUG}
-    paths:
-      - .npm/
   script:
-    - npm ci --cache .npm --prefer-offline
+    - npm ci
     - npm run build:standalone
     - mkdir -p public
     - cp -R outputs/optical-calculator/. public/
