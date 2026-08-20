@@ -13,6 +13,7 @@
     "test": "npm run test:optics && npm run build && npm run build:standalone && node --test tests/rendered-html.test.mjs tests/standalone-output.test.mjs",
     "test:optics": "node --test tests/solve-2d-design.test.ts tests/fov-cone-geometry.test.ts",
     "build:standalone": "node scripts/build-standalone.mjs",
+    "build:pages": "node scripts/build-standalone.mjs --pages",
     "lint": "eslint . --ignore-pattern dist --ignore-pattern .next",
     "db:generate": "drizzle-kit generate"
   },

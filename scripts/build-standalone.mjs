@@ -10,6 +10,8 @@ const readmePath = resolve(projectRoot, "standalone", "README.md");
 const outputDirectory = resolve(projectRoot, "outputs", "optical-calculator");
 const outputPath = resolve(outputDirectory, "index.html");
 const outputReadmePath = resolve(outputDirectory, "README.md");
+const pagesOutputPath = resolve(projectRoot, "public", "index.html");
+const shouldWritePagesOutput = process.argv.includes("--pages");
 
 const bundleResult = await build({
   configFile: false,
@@ -62,3 +64,8 @@ await Promise.all([
   writeFile(outputReadmePath, readme, "utf8"),
 ]);
 console.log(`已生成离线版：${outputPath}`);
+
+if (shouldWritePagesOutput) {
+  await writeFile(pagesOutputPath, html, "utf8");
+  console.log(`已生成 Pages 版：${pagesOutputPath}`);
+}

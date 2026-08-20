@@ -1,0 +1,1251 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>光学方案计算器 · 离线版</title>
+  <style>
+:root {
+  --work-ink: #1d2935;
+  --work-muted: #687582;
+  --work-faint: #8b96a0;
+  --work-line: #d8dee5;
+  --work-line-strong: #c4ccd5;
+  --work-canvas: #f2f4f6;
+  --work-surface: #ffffff;
+  --work-blue: #245f96;
+  --work-blue-dark: #1c4e78;
+  --work-blue-soft: #edf5fb;
+  --work-input: #fff9e7;
+  --work-green: #23745d;
+  --work-green-soft: #e8f6f0;
+  --work-orange: #9a5a18;
+  --work-orange-soft: #fff3df;
+  --work-red: #a33a3a;
+  --work-red-soft: #fcecec;
+}
+
+* { box-sizing: border-box; }
+html { background: var(--work-canvas); }
+body {
+  margin: 0;
+  color: var(--work-ink);
+  background: var(--work-canvas);
+  font-family: "Segoe UI", "Microsoft YaHei", sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+button, input, select { font: inherit; }
+button { cursor: pointer; }
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+summary:focus-visible { outline: 3px solid rgba(36, 95, 150, .22); outline-offset: 2px; }
+
+.workbench-shell { min-height: 100vh; background: var(--work-canvas); }
+.workbench-topbar {
+  position: sticky;
+  z-index: 20;
+  top: 0;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  min-height: 68px;
+  align-items: center;
+  padding: 0 30px;
+  border-bottom: 1px solid var(--work-line);
+  background: rgba(255, 255, 255, .96);
+  box-shadow: 0 2px 14px rgba(24, 35, 46, .04);
+  backdrop-filter: blur(12px);
+}
+.brand-lockup { display: flex; gap: 11px; align-items: center; }
+.brand-mark { display: grid; width: 36px; height: 36px; place-items: center; border-radius: 8px; color: #fff; background: var(--work-blue); font-size: 12px; font-weight: 800; letter-spacing: .06em; }
+.brand-lockup > div { display: grid; gap: 2px; }
+.brand-lockup strong { font-size: 14px; }
+.brand-lockup small { color: var(--work-muted); font-size: 10px; }
+.topbar-context { display: flex; gap: 9px; align-items: center; }
+.topbar-context span { padding: 4px 7px; border: 1px solid var(--work-line-strong); border-radius: 4px; color: var(--work-muted); font-size: 9px; font-weight: 700; }
+.topbar-context strong { font-size: 11px; font-weight: 650; }
+.topbar-status { display: flex; gap: 9px; align-items: center; justify-content: flex-end; }
+.unsaved-dot { color: var(--work-orange); font-size: 9px; font-weight: 700; }
+.unsaved-dot::before { display: inline-block; width: 6px; height: 6px; margin-right: 6px; border-radius: 50%; content: ""; background: #d4862e; }
+
+.scheme-status { display: inline-flex; min-height: 27px; align-items: center; padding: 0 10px; border-radius: 999px; font-size: 10px; font-weight: 700; white-space: nowrap; }
+.scheme-status--incomplete { color: var(--work-muted); background: #edf0f2; }
+.scheme-status--feasible { color: var(--work-green); background: var(--work-green-soft); }
+.scheme-status--review { color: var(--work-orange); background: var(--work-orange-soft); }
+.scheme-status--none { color: var(--work-red); background: var(--work-red-soft); }
+
+.workbench-page { width: min(1500px, calc(100% - 48px)); margin: 0 auto; padding: 30px 0 60px; }
+.page-heading { display: flex; align-items: flex-end; justify-content: space-between; gap: 30px; }
+.page-heading p { margin: 0 0 6px; color: var(--work-blue); font-size: 9px; font-weight: 800; letter-spacing: .14em; }
+.page-heading h1 { margin: 0; font-size: 27px; letter-spacing: -.04em; }
+.page-heading > span { color: var(--work-muted); font-size: 10px; }
+
+.mode-tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 1px; margin: 20px 0 16px; padding: 1px; border-radius: 9px; background: var(--work-line); overflow: hidden; }
+.mode-tabs button { display: grid; grid-template-columns: 32px 1fr; gap: 10px; min-height: 58px; align-items: center; padding: 0 17px; border: 0; color: var(--work-muted); background: #f9fafb; text-align: left; }
+.mode-tabs button b { display: grid; width: 26px; height: 26px; place-items: center; border-radius: 50%; background: #e9edf0; font-size: 8px; }
+.mode-tabs button span { display: grid; gap: 3px; }
+.mode-tabs button strong { font-size: 11px; }
+.mode-tabs button small { color: var(--work-faint); font-size: 8px; }
+.mode-tabs button.active { position: relative; color: var(--work-blue); background: var(--work-surface); }
+.mode-tabs button.active::before { position: absolute; inset: 0 auto 0 0; width: 3px; content: ""; background: var(--work-blue); }
+.mode-tabs button.active b { color: #fff; background: var(--work-blue); }
+
+.workbench-grid { display: grid; grid-template-columns: minmax(650px, 1.15fr) minmax(390px, .85fr); gap: 16px; align-items: start; }
+.input-sheet,
+.result-card,
+.fov-cone,
+.assumption-card,
+.future-panel { border: 1px solid var(--work-line); border-radius: 10px; background: var(--work-surface); box-shadow: 0 8px 24px rgba(36, 49, 62, .045); }
+.input-sheet { padding: 24px; }
+.section-heading { display: grid; grid-template-columns: 28px 1fr auto; gap: 12px; align-items: start; margin-bottom: 20px; }
+.section-heading > span { display: grid; width: 28px; height: 28px; place-items: center; border-radius: 6px; color: var(--work-blue); background: var(--work-blue-soft); font-size: 9px; font-weight: 800; }
+.section-heading h2 { margin: 1px 0 0; font-size: 17px; letter-spacing: -.02em; }
+.section-heading p { margin: 4px 0 0; color: var(--work-muted); font-size: 9px; }
+.section-heading__aside { align-self: center; }
+.sheet-divider { height: 1px; margin: 26px 0 21px; background: var(--work-line); }
+
+.source-switch { display: inline-grid; grid-template-columns: 1fr 1fr; width: 240px; margin-bottom: 15px; padding: 3px; border-radius: 7px; background: #edf0f3; }
+.source-switch button { min-height: 30px; border: 0; border-radius: 5px; color: var(--work-muted); background: transparent; font-size: 10px; }
+.source-switch button.active { color: var(--work-blue); background: #fff; box-shadow: 0 1px 5px rgba(24, 35, 46, .12); font-weight: 700; }
+.camera-select { display: grid; gap: 6px; margin-bottom: 15px; }
+.camera-select > span,
+.work-field__label { color: #4f5e6c; font-size: 10px; font-weight: 650; }
+.camera-select select { min-height: 41px; padding: 0 10px; border: 1px solid var(--work-line-strong); border-radius: 6px; color: var(--work-ink); background: #fff; font-size: 12px; font-weight: 650; }
+.camera-select select:disabled { opacity: 1; }
+.camera-select small,
+.work-field small { color: var(--work-faint); font-size: 8px; line-height: 1.45; }
+.field-grid { display: grid; gap: 12px; margin-top: 15px; }
+.field-grid--2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.field-grid--3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.work-field { display: grid; min-width: 0; gap: 6px; }
+.work-field__label { display: flex; align-items: center; justify-content: space-between; }
+.work-field__label em { color: var(--work-faint); font-size: 8px; font-style: normal; font-weight: 500; }
+.work-field__control { display: flex; min-height: 39px; align-items: center; border: 1px solid #dfd6b8; border-radius: 6px; background: var(--work-input); overflow: hidden; }
+.work-field__control input { width: 100%; min-width: 0; padding: 0 8px 0 11px; border: 0; outline: 0; color: var(--work-ink); background: transparent; font-size: 13px; font-weight: 650; font-variant-numeric: tabular-nums; }
+.work-field__control > span { min-width: 58px; padding: 0 9px; border-left: 1px solid rgba(155, 138, 82, .2); color: #756d56; font-size: 8px; text-align: right; white-space: nowrap; }
+.work-field--derived .work-field__control { border-color: #cbdce9; background: var(--work-blue-soft); }
+.work-field--derived .work-field__control > span { border-color: #cbdce9; color: #5d7488; }
+
+.derived-strip { display: grid; grid-template-columns: repeat(4, 1fr); margin: 13px 0 15px; border: 1px solid #d8e5ee; border-radius: 7px; background: var(--work-blue-soft); }
+.derived-strip > span { min-width: 0; padding: 11px 12px; border-right: 1px solid #d8e5ee; }
+.derived-strip > span:last-child { border-right: 0; }
+.derived-strip small { display: block; color: var(--work-muted); font-size: 8px; }
+.derived-strip strong { display: block; margin-top: 5px; overflow: hidden; font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
+
+.plane-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.plane-card { display: grid; align-content: start; gap: 13px; padding: 0 13px 14px; border: 1px solid var(--work-line); border-radius: 8px; background: #fafbfc; overflow: hidden; }
+.plane-card h3 { margin: 0 -13px; padding: 9px 12px; border-bottom: 1px solid var(--work-line); color: var(--work-muted); font-size: 9px; letter-spacing: .04em; }
+.plane-card--near h3 { color: #276c59; background: #eef8f4; }
+.plane-card--focus h3 { color: #255c91; background: #eef5fb; }
+.plane-card--far h3 { color: #70519a; background: #f6f1fb; }
+.plane-card p { min-height: 61px; margin: 0; padding: 10px; border: 1px dashed var(--work-line-strong); border-radius: 6px; color: var(--work-muted); font-size: 8px; line-height: 1.55; }
+.plane-card p strong { color: var(--work-ink); font-size: 9px; }
+
+.motion-toggle { display: flex; gap: 7px; align-items: center; color: var(--work-muted); font-size: 9px; cursor: pointer; }
+.motion-toggle input { position: absolute; opacity: 0; }
+.motion-toggle span { position: relative; width: 30px; height: 17px; border-radius: 999px; background: #cdd4da; transition: background .2s; }
+.motion-toggle span::after { position: absolute; top: 3px; left: 3px; width: 11px; height: 11px; border-radius: 50%; content: ""; background: #fff; transition: transform .2s; }
+.motion-toggle input:checked + span { background: var(--work-blue); }
+.motion-toggle input:checked + span::after { transform: translateX(13px); }
+.optional-empty { padding: 14px; border: 1px dashed var(--work-line-strong); border-radius: 7px; color: var(--work-muted); background: #fafbfc; font-size: 9px; }
+
+.validation-box { margin-top: 15px; padding: 12px 14px; border: 1px solid #edc3c3; border-radius: 7px; color: var(--work-red); background: var(--work-red-soft); }
+.validation-box strong { font-size: 10px; }
+.validation-box ul { margin: 7px 0 0; padding-left: 17px; font-size: 9px; line-height: 1.6; }
+.calculate-button { display: flex; min-height: 55px; width: 100%; align-items: center; justify-content: space-between; gap: 16px; margin-top: 18px; padding: 0 18px; border: 0; border-radius: 7px; color: #fff; background: var(--work-blue); box-shadow: 0 8px 16px rgba(36, 95, 150, .16); text-align: left; }
+.calculate-button:hover { background: var(--work-blue-dark); }
+.calculate-button span { font-size: 13px; font-weight: 700; }
+.calculate-button small { opacity: .76; font-size: 8px; }
+
+.result-column { position: sticky; top: 84px; display: grid; gap: 14px; }
+.result-card { position: relative; padding: 22px; overflow: hidden; }
+.stale-banner { display: flex; gap: 10px; align-items: center; margin: -22px -22px 18px; padding: 10px 14px; color: #734b17; background: var(--work-orange-soft); }
+.stale-banner span { padding: 3px 6px; border-radius: 4px; color: #fff; background: #c47a25; font-size: 8px; font-weight: 750; white-space: nowrap; }
+.stale-banner p { margin: 0; font-size: 8px; }
+.result-card__head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+.result-card__head small,
+.fov-cone figcaption small { color: var(--work-blue); font-size: 9px; font-weight: 750; letter-spacing: .12em; }
+.result-card__head h2 { margin: 6px 0 0; color: var(--work-blue); font-size: 35px; letter-spacing: -.055em; }
+.result-card__head p { margin: 6px 0 0; color: var(--work-muted); font-size: 8px; }
+.result-metrics { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1px; margin-top: 18px; border: 1px solid var(--work-line); border-radius: 7px; background: var(--work-line); overflow: hidden; }
+.result-metrics span { min-width: 0; padding: 12px; background: #fafbfc; }
+.result-metrics small { display: block; color: var(--work-muted); font-size: 8px; }
+.result-metrics strong { display: block; margin-top: 6px; overflow: hidden; font-size: 11px; font-variant-numeric: tabular-nums; text-overflow: ellipsis; white-space: nowrap; }
+.review-message { display: flex; gap: 9px; margin-top: 13px; padding: 11px; border-radius: 7px; color: #724d1b; background: var(--work-orange-soft); }
+.review-message b { display: grid; width: 18px; height: 18px; flex: 0 0 auto; place-items: center; border-radius: 50%; color: #fff; background: #c47a25; font-size: 10px; }
+.review-message p { margin: 0; font-size: 8px; line-height: 1.55; }
+.no-result-message { margin-top: 18px; padding: 14px; border-radius: 7px; color: var(--work-red); background: var(--work-red-soft); font-size: 9px; line-height: 1.6; }
+
+.fov-cone { margin: 0; padding: 18px; }
+.fov-cone figcaption { display: flex; align-items: center; justify-content: space-between; }
+.fov-cone figcaption > div { display: grid; gap: 4px; }
+.fov-cone figcaption strong { font-size: 12px; }
+.fov-cone figcaption > span { padding: 4px 7px; border-radius: 4px; color: var(--work-muted); background: #f0f2f4; font-size: 8px; }
+.cone-stage { position: relative; width: min(100%, 480px); aspect-ratio: .86; margin: 12px auto 0; overflow: hidden; }
+.cone-wedge { position: absolute; z-index: 0; inset: 0; background: linear-gradient(90deg, rgba(36,95,150,.035), rgba(36,95,150,.12)); clip-path: polygon(var(--cone-origin-x) var(--cone-axis-y), var(--cone-far-x) calc(var(--cone-axis-y) - var(--cone-far-half)), var(--cone-far-x) calc(var(--cone-axis-y) + var(--cone-far-half))); }
+.cone-axis { position: absolute; z-index: 1; top: var(--cone-axis-y); left: var(--cone-origin-x); width: calc(var(--cone-far-x) - var(--cone-origin-x)); height: 1px; background: rgba(86,133,176,.34); }
+.cone-ray { position: absolute; z-index: 1; top: var(--cone-axis-y); left: var(--cone-origin-x); width: var(--cone-ray-length); height: 1px; background: repeating-linear-gradient(90deg, #5685b0 0 5px, transparent 5px 9px); transform-origin: left center; }
+.cone-ray--top { transform: rotate(var(--cone-ray-angle-negative)); }
+.cone-ray--bottom { transform: rotate(var(--cone-ray-angle)); }
+.cone-camera { position: absolute; z-index: 3; top: var(--cone-axis-y); left: var(--cone-origin-x); width: 27px; height: 38px; border-radius: 4px; background: #405363; transform: translate(-100%, -50%); }
+.cone-camera i { position: absolute; top: 50%; right: -10px; width: 14px; height: 14px; border: 3px solid var(--work-blue); border-radius: 50%; background: #fff; transform: translateY(-50%); }
+.cone-plane { position: absolute; z-index: 2; top: var(--cone-axis-y); left: var(--plane-left); height: var(--plane-height); border-left: 3px solid; transform: translateY(-50%); }
+.cone-plane i { position: absolute; top: 50%; left: -5px; width: 7px; height: 7px; border-radius: 50%; background: currentColor; transform: translateY(-50%); }
+.cone-plane--1 { color: #2f7b67; }
+.cone-plane--2 { color: #2e5e9e; }
+.cone-plane--3 { color: #7a55a6; }
+.cone-legend { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 7px; margin-top: 8px; }
+.cone-legend__item { position: relative; min-width: 0; padding: 8px 8px 8px 15px; border: 1px solid var(--work-line); border-radius: 6px; background: #fafbfc; }
+.cone-legend__item i { position: absolute; top: 8px; bottom: 8px; left: 7px; width: 3px; border-radius: 2px; background: currentColor; }
+.cone-legend__item small,
+.cone-legend__item strong { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cone-legend__item small { color: var(--work-muted); font-size: 8px; }
+.cone-legend__item strong { margin-top: 4px; color: var(--work-ink); font-size: 8px; }
+.cone-empty { display: grid; min-height: 220px; place-items: center; border: 1px dashed var(--work-line-strong); border-radius: 8px; color: var(--work-muted); background: #fff; font-size: 10px; }
+
+.assumption-card { padding: 15px; }
+.assumption-card > strong { font-size: 9px; }
+.assumption-card div { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 9px; }
+.assumption-card div span { padding: 4px 7px; border-radius: 4px; color: var(--work-muted); background: #f0f2f4; font-size: 8px; }
+.assumption-card p { margin: 9px 0 0; color: var(--work-faint); font-size: 8px; line-height: 1.45; }
+
+.output-panel { margin-top: 18px; border: 1px solid var(--work-line); border-radius: 10px; background: #fff; box-shadow: 0 8px 24px rgba(36, 49, 62, .045); }
+.candidate-panel { padding: 20px; }
+.output-heading,
+.parameter-heading { display: flex; align-items: flex-end; justify-content: space-between; gap: 20px; margin-bottom: 14px; }
+.output-heading small,
+.parameter-heading small { color: var(--work-blue); font-size: 8px; font-weight: 800; letter-spacing: .12em; }
+.output-heading h2,
+.parameter-heading h2 { margin: 5px 0 0; font-size: 16px; }
+.output-heading p,
+.parameter-heading p { margin: 4px 0 0; color: var(--work-muted); font-size: 8px; }
+.output-age { padding: 5px 8px; border-radius: 5px; color: var(--work-green); background: var(--work-green-soft); font-size: 8px; font-weight: 700; }
+.output-age--stale { color: var(--work-orange); background: var(--work-orange-soft); }
+.candidate-table-wrap { overflow-x: auto; }
+.candidate-table { width: 100%; border-collapse: collapse; font-size: 9px; }
+.candidate-table th { padding: 9px 10px; border: 1px solid var(--work-line); color: var(--work-muted); background: #f2f4f6; font-size: 8px; font-weight: 700; text-align: left; white-space: nowrap; }
+.candidate-table td { padding: 10px; border: 1px solid var(--work-line); background: #fff; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.candidate-table tr.recommended td { background: #eef7f3; }
+.candidate-table td:first-child strong { display: inline-block; min-width: 48px; }
+.candidate-table td:first-child em { display: inline-block; margin-left: 6px; padding: 2px 5px; border-radius: 4px; color: #fff; background: var(--work-green); font-size: 7px; font-style: normal; }
+.candidate-table td:nth-child(5) small { display: block; margin-top: 3px; color: var(--work-muted); font-size: 8px; }
+.candidate-table td:last-child { min-width: 210px; white-space: normal; }
+.candidate-table td:last-child small { margin-left: 7px; color: var(--work-muted); font-size: 8px; }
+.candidate-status { display: inline-block; min-width: 42px; padding: 3px 5px; border-radius: 4px; font-size: 7px; font-weight: 700; text-align: center; }
+.candidate-status.pass { color: var(--work-green); background: var(--work-green-soft); }
+.candidate-status.review { color: var(--work-orange); background: var(--work-orange-soft); }
+.candidate-status.fail { color: var(--work-red); background: var(--work-red-soft); }
+
+.parameter-panel { padding: 22px; }
+.parameter-heading { padding-bottom: 15px; border-bottom: 2px solid #2e3c49; }
+.export-actions { display: flex; gap: 7px; align-items: center; }
+.export-actions button { min-height: 34px; padding: 0 11px; border: 1px solid var(--work-line-strong); border-radius: 6px; color: var(--work-blue); background: #fff; font-size: 8px; font-weight: 700; }
+.export-actions button:hover:not(:disabled) { border-color: var(--work-blue); background: var(--work-blue-soft); }
+.export-actions button:disabled { color: #a5adb5; background: #f1f3f5; cursor: not-allowed; }
+.parameter-stale { margin: 0 0 12px; padding: 8px 10px; color: var(--work-orange); background: var(--work-orange-soft); font-size: 8px; }
+.export-message { margin: 0 0 12px; padding: 8px 10px; color: var(--work-blue); background: var(--work-blue-soft); font-size: 8px; }
+.parameter-grid { display: grid; grid-template-columns: repeat(2, 1fr); border-top: 1px solid var(--work-line-strong); border-left: 1px solid var(--work-line-strong); }
+.parameter-group { border-right: 1px solid var(--work-line-strong); border-bottom: 1px solid var(--work-line-strong); }
+.parameter-group h3 { margin: 0; padding: 8px 10px; border-bottom: 1px solid var(--work-line-strong); background: #e9edf1; font-size: 9px; text-align: center; }
+.parameter-group dl { margin: 0; }
+.parameter-group dl > div { display: grid; grid-template-columns: 42% 58%; min-height: 34px; border-bottom: 1px solid var(--work-line); }
+.parameter-group dl > div:last-child { border-bottom: 0; }
+.parameter-group dt,
+.parameter-group dd { margin: 0; padding: 8px; font-size: 8px; line-height: 1.35; }
+.parameter-group dt { color: var(--work-muted); background: #f8f9fa; }
+.parameter-group dd { border-left: 1px solid var(--work-line); font-weight: 650; font-variant-numeric: tabular-nums; }
+.parameter-panel > footer { display: flex; justify-content: space-between; gap: 20px; padding-top: 12px; color: var(--work-muted); font-size: 7px; }
+
+.future-panel { display: grid; max-width: 780px; min-height: 340px; margin: 35px auto; place-items: center; align-content: center; padding: 50px; text-align: center; }
+.future-panel > span { display: grid; width: 54px; height: 54px; place-items: center; border-radius: 12px; color: var(--work-blue); background: var(--work-blue-soft); font-weight: 800; }
+.future-panel h2 { margin: 18px 0 0; font-size: 22px; }
+.future-panel p { max-width: 570px; margin: 10px 0 20px; color: var(--work-muted); font-size: 10px; line-height: 1.7; }
+.future-panel button { min-height: 38px; padding: 0 14px; border: 1px solid var(--work-blue); border-radius: 6px; color: var(--work-blue); background: #fff; font-size: 10px; font-weight: 700; }
+
+@media (max-width: 1120px) {
+  .workbench-topbar { grid-template-columns: 1fr auto; }
+  .topbar-context { display: none; }
+  .workbench-grid { grid-template-columns: 1fr; }
+  .result-column { position: static; grid-template-columns: 1fr 1fr; }
+  .assumption-card { grid-column: 1 / -1; }
+}
+
+@media (max-width: 760px) {
+  .workbench-topbar { padding: 0 14px; }
+  .brand-lockup small,
+  .unsaved-dot { display: none; }
+  .workbench-page { width: calc(100% - 28px); padding-top: 20px; }
+  .page-heading { display: grid; }
+  .page-heading > span { line-height: 1.5; }
+  .field-grid--2,
+  .field-grid--3,
+  .plane-grid,
+  .derived-strip,
+  .result-column { grid-template-columns: 1fr; }
+  .derived-strip > span { border-right: 0; border-bottom: 1px solid #d8e5ee; }
+  .derived-strip > span:last-child { border-bottom: 0; }
+  .calculate-button { align-items: flex-start; flex-direction: column; justify-content: center; }
+  .result-metrics { grid-template-columns: 1fr; }
+  .output-heading,
+  .parameter-heading { align-items: flex-start; flex-direction: column; }
+  .parameter-grid { grid-template-columns: 1fr; }
+  .export-actions { width: 100%; }
+  .export-actions button { flex: 1; }
+}
+
+@media print {
+  @page { size: A4 landscape; margin: 10mm; }
+  .workbench-topbar,
+  .page-heading,
+  .mode-tabs,
+  .workbench-grid,
+  .candidate-panel,
+  .export-actions,
+  .parameter-stale,
+  .export-message { display: none !important; }
+  html,
+  body,
+  .workbench-shell { background: #fff; }
+  .workbench-page { width: 100%; padding: 0; }
+  .parameter-panel { margin: 0; padding: 0; border: 0; box-shadow: none; }
+  .parameter-heading { margin-bottom: 10px; }
+  .parameter-grid { break-inside: avoid; }
+}
+
+  .standalone-note{margin:0 0 14px;padding:9px 12px;border:1px solid #cfdae4;border-radius:7px;color:#4f6578;background:#f4f8fb;font-size:9px}
+  .standalone-camera-row{display:grid;grid-template-columns:180px 1fr;gap:12px;margin-bottom:15px}
+  .standalone-camera-row select,.standalone-camera-row input{min-height:39px;width:100%;padding:0 10px;border:1px solid var(--work-line-strong);border-radius:6px;color:var(--work-ink);background:#fff;font-size:11px;font-weight:650}
+  .standalone-camera-row label{display:grid;gap:6px;color:#4f5e6c;font-size:10px;font-weight:650}
+  .standalone-camera-row input:not([readonly]){border-color:#dfd6b8;background:var(--work-input)}
+  .standalone-validation{margin-top:15px;padding:12px 14px;border:1px solid #edc3c3;border-radius:7px;color:var(--work-red);background:var(--work-red-soft);font-size:9px;line-height:1.6}
+  .standalone-motion{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+  .standalone-result-value{margin:6px 0 0;color:var(--work-blue);font-size:35px;letter-spacing:-.055em}
+  .standalone-status{display:inline-flex;min-height:27px;align-items:center;padding:0 10px;border-radius:999px;font-size:10px;font-weight:700;white-space:nowrap}
+  .standalone-parameter-grid{display:grid;grid-template-columns:repeat(2,1fr);border-top:1px solid var(--work-line-strong);border-left:1px solid var(--work-line-strong)}
+  .standalone-parameter-grid .parameter-group{min-width:0}
+  .standalone-footer{display:flex;justify-content:space-between;gap:20px;padding:18px 0;color:var(--work-muted);font-size:8px}
+  @media(max-width:760px){.standalone-camera-row,.standalone-motion,.standalone-parameter-grid{grid-template-columns:1fr}}
+  </style>
+</head>
+<body>
+  <main class="workbench-shell">
+    <header class="workbench-topbar">
+      <div class="brand-lockup"><span class="brand-mark">OC</span><div><strong>光学方案计算器</strong><small>单文件离线版</small></div></div>
+      <div class="topbar-context"><span>二维线扫</span><strong>有限共轭 · 理论选型值</strong></div>
+      <div class="topbar-status"><span id="dirty-label" class="unsaved-dot" hidden>待重新计算</span><span id="top-status" class="standalone-status scheme-status--review">可行但需复核</span></div>
+    </header>
+
+    <div class="workbench-page">
+      <div class="page-heading"><div><p>2D OPTICAL DESIGN / OFFLINE</p><h1>光学方案工程表</h1></div><span>不登录 · 不上传 · 不访问网络 · 所有计算在当前浏览器完成</span></div>
+      <nav class="mode-tabs" aria-label="光学方案类型">
+        <button class="active"><b>01</b><span><strong>2D 成像方案</strong><small>当前可用</small></span></button>
+        <button disabled title="后续阶段"><b>02</b><span><strong>3D 三角测量</strong><small>后续阶段</small></span></button>
+      </nav>
+
+      <p class="standalone-note">本文件由项目构建脚本从权威光学求解模块生成。若文件日期早于最新程序，请重新执行离线构建后再用于工程计算。</p>
+
+      <div class="workbench-grid">
+        <section class="input-sheet">
+          <div class="section-heading"><span>01</span><div><h2>相机与传感器</h2><p>指定相机是镜头选型的前提</p></div></div>
+          <div class="standalone-camera-row">
+            <label>参数来源<select id="camera-source"><option value="catalog">内置型号</option><option value="custom">自定义相机</option></select></label>
+            <label>相机型号<input id="camera-model" value="MV-CL042-91GC" readonly></label>
+          </div>
+          <div class="field-grid field-grid--3">
+            <label class="work-field"><span class="work-field__label">横向像素数</span><span class="work-field__control work-field--derived"><input id="pixels" type="number" value="4096" readonly><span>px</span></span></label>
+            <label class="work-field"><span class="work-field__label">行数</span><span class="work-field__control work-field--derived"><input id="rows" type="number" value="2" readonly><span>行</span></span></label>
+            <label class="work-field"><span class="work-field__label">像元尺寸</span><span class="work-field__control work-field--derived"><input id="pitch" type="number" value="7" readonly><span>μm</span></span></label>
+          </div>
+          <div class="derived-strip">
+            <span><small>传感器宽度</small><strong id="sensor-width">28.672 mm</strong></span><span><small>相机类型</small><strong>彩色线扫</strong></span><span><small>数据接口</small><strong>GigE</strong></span><span><small>镜头接口</small><strong>M42</strong></span>
+          </div>
+          <label class="work-field"><span class="work-field__label">设计最高行频<em>可选</em></span><span class="work-field__control work-field--derived"><input id="line-rate" type="number" value="28" readonly><span>kHz</span></span><small>自定义相机可留空；缺省时运动采样显示“无法判定”</small></label>
+
+          <div class="sheet-divider"></div>
+          <div class="section-heading"><span>02</span><div><h2>三个工作面与硬约束</h2><p>距离统一以物方主平面为基准</p></div></div>
+          <div class="plane-grid">
+            <div class="plane-card plane-card--near"><h3>近端工作面</h3><label class="work-field"><span class="work-field__label">物距</span><span class="work-field__control"><input id="near-distance" type="number" value="560"><span>mm</span></span></label><label class="work-field"><span class="work-field__label">原始视场需求</span><span class="work-field__control"><input id="near-fov" type="number" value="700"><span>mm</span></span></label></div>
+            <div class="plane-card plane-card--focus"><h3>对焦面</h3><label class="work-field"><span class="work-field__label">对焦距离<em>可选</em></span><span class="work-field__control"><input id="focus-distance" type="number" placeholder="自动"><span>mm</span></span><small>留空时自动计算</small></label><p><strong>空值自动平衡景深</strong><br>采用近、远端弥散圆要求相等的精确解，不是简单取中点。</p></div>
+            <div class="plane-card plane-card--far"><h3>远端工作面</h3><label class="work-field"><span class="work-field__label">物距</span><span class="work-field__control"><input id="far-distance" type="number" value="1400"><span>mm</span></span></label><label class="work-field"><span class="work-field__label">原始视场需求</span><span class="work-field__control"><input id="far-fov" type="number" value="1070"><span>mm</span></span></label></div>
+          </div>
+          <div class="field-grid field-grid--3">
+            <label class="work-field"><span class="work-field__label">全局视场设计余量</span><span class="work-field__control"><input id="margin" type="number" value="10"><span>%</span></span><small>同时作用于近端和远端；不属于光学公式</small></label>
+            <label class="work-field"><span class="work-field__label">最大允许物方像素当量<em>可选</em></span><span class="work-field__control"><input id="max-resolution" type="number" value="0.55" step="0.01"><span>mm/px</span></span><small>作为焦距筛选的硬约束</small></label>
+            <label class="work-field"><span class="work-field__label">最大允许 F 值<em>可选</em></span><span class="work-field__control"><input id="max-f-number" type="number" value="11" step="0.1"><span>F 值</span></span><small>默认 F/11；再大的 F 值表示光圈更小</small></label>
+          </div>
+
+          <div class="sheet-divider"></div>
+          <div class="section-heading"><span>03</span><div><h2>运动方向采样</h2><p>可选：校核固定相机的设计最高行频</p></div><div class="section-heading__aside"><label class="motion-toggle"><input id="motion-enabled" type="checkbox" checked><span></span>启用</label></div></div>
+          <div id="motion-fields" class="standalone-motion">
+            <label class="work-field"><span class="work-field__label">最大运行速度</span><span class="work-field__control"><input id="speed" type="number" value="60"><span>km/h</span></span></label>
+            <label class="work-field"><span class="work-field__label">目标纵向采样</span><span class="work-field__control"><input id="sample" type="number" value="0.8" step="0.1"><span>mm/line</span></span></label>
+          </div>
+          <div id="validation" class="standalone-validation" hidden></div>
+          <button id="calculate" class="calculate-button"><span>计算并推荐焦距</span><small>校核视场、分辨率、景深与运动采样</small></button>
+        </section>
+
+        <aside class="result-column">
+          <section class="result-card">
+            <div id="stale-banner" class="stale-banner" hidden><span>输入已变化</span><p>下方仍是上一次有效结果，请重新计算后再导出。</p></div>
+            <div class="result-card__head"><div><small>推荐结果</small><h2 id="recommended" class="standalone-result-value">18.0 mm</h2><p id="status-message"></p></div><span id="result-status" class="standalone-status scheme-status--review">可行但需复核</span></div>
+            <div class="result-metrics">
+              <span><small>连续焦距可行区间</small><strong id="focal-range"></strong></span><span><small>建议工作光圈</small><strong id="f-number"></strong></span><span><small>景深所需最低 F 值</small><strong id="required-f-number"></strong></span><span><small>目标工作区间</small><strong id="work-range"></strong></span><span><small>理论景深范围</small><strong id="dof-range"></strong></span><span><small>对焦位置</small><strong id="focus-result"></strong></span><span><small>近端像素当量</small><strong id="near-pixel"></strong></span><span><small>远端像素当量</small><strong id="far-pixel"></strong></span><span><small>所需行频</small><strong id="required-line-rate"></strong></span><span><small>运动采样</small><strong id="motion-status"></strong></span>
+            </div>
+            <div id="diffraction-warning" class="review-message"><b>!</b><p id="diffraction-text"></p></div>
+            <div id="no-result" class="no-result-message" hidden></div>
+          </section>
+          <figure class="fov-cone">
+            <figcaption><div><small>视场锥</small><strong>三个工作面的实际覆盖</strong></div><span id="cone-angle">物方主平面基准</span></figcaption>
+            <div id="cone-no-result" class="cone-empty" hidden>选出可行焦距后显示视场锥</div>
+            <div id="cone-stage" class="cone-stage">
+              <div class="cone-wedge"></div><div class="cone-axis"></div><div class="cone-ray cone-ray--top"></div><div class="cone-ray cone-ray--bottom"></div><div class="cone-camera"><i></i></div>
+              <div id="cone-near" class="cone-plane cone-plane--1"><i></i></div><div id="cone-focus" class="cone-plane cone-plane--2"><i></i></div><div id="cone-far" class="cone-plane cone-plane--3"><i></i></div>
+            </div>
+            <div id="cone-legend" class="cone-legend">
+              <span class="cone-legend__item cone-plane--1"><i></i><small id="cone-legend-1-distance"></small><strong id="cone-legend-1-fov"></strong></span>
+              <span class="cone-legend__item cone-plane--2"><i></i><small id="cone-legend-2-distance"></small><strong id="cone-legend-2-fov"></strong></span>
+              <span class="cone-legend__item cone-plane--3"><i></i><small id="cone-legend-3-distance"></small><strong id="cone-legend-3-fov"></strong></span>
+            </div>
+          </figure>
+          <div class="assumption-card"><strong>本次计算口径</strong><div><span>有限共轭理想薄透镜</span><span>弥散圆 = 2 × 像元</span><span id="focus-method"></span><span>550 nm 可见光参考波长</span></div><p>具体镜头主平面、畸变、MTF 与装调误差需在型号确定后复核。</p></div>
+        </aside>
+      </div>
+
+      <section class="output-panel candidate-panel"><div class="output-heading"><div><small>FOCAL CANDIDATES</small><h2>标准焦距筛选明细</h2><p>展示全部候选及淘汰原因，不使用隐藏评分。</p></div><span id="candidate-count" class="output-age"></span></div><div class="candidate-table-wrap"><table class="candidate-table"><thead><tr><th>标准焦距</th><th>近端实际 / 要求视场</th><th>远端实际 / 要求视场</th><th>远端像素当量</th><th>景深最低 / 设定光圈</th><th>判定与原因</th></tr></thead><tbody id="candidate-body"></tbody></table></div></section>
+
+      <section class="output-panel parameter-panel" id="optical-parameter-sheet"><div class="parameter-heading"><div><small>DELIVERABLE TABLE</small><h2>光学方案参数表</h2><p>白底排版，适合复制到 Word 或按 A4 横向打印。</p></div><div class="export-actions"><button id="copy-png">复制 PNG</button><button id="download-png">下载 PNG</button><button id="print-pdf">打印 / PDF</button></div></div><div id="parameter-stale" class="parameter-stale" hidden>输入已变化，导出已暂停；重新计算后恢复。</div><div id="export-message" class="export-message" hidden></div><div id="parameter-grid" class="standalone-parameter-grid"></div><footer><span>理论选型值 · 距离基准：物方主平面</span><span>实际镜头需复核主平面、畸变、MTF 与装调误差</span></footer></section>
+      <footer class="standalone-footer"><span>光学方案计算器 · 单文件离线版</span><span>生成日期：2026/08/20 11:39</span></footer>
+    </div>
+  </main>
+  <script>
+(function() {
+	//#region lib/optics/solve-2d-design.ts
+	var DEFAULT_STANDARD_FOCAL_LENGTHS_MM = [
+		8,
+		12.5,
+		14,
+		16,
+		18,
+		25,
+		35,
+		50,
+		60,
+		100
+	];
+	var EPSILON = 1e-9;
+	function isPositiveFinite$1(value) {
+		return Number.isFinite(value) && value > 0;
+	}
+	function isNonNegativeFinite(value) {
+		return Number.isFinite(value) && value >= 0;
+	}
+	function fieldOfViewMm(sensorWidthMm, objectDistanceMm, focalLengthMm) {
+		return sensorWidthMm * (objectDistanceMm - focalLengthMm) / focalLengthMm;
+	}
+	function objectPixelMm(pixelPitchMm, objectDistanceMm, focalLengthMm) {
+		return pixelPitchMm * (objectDistanceMm - focalLengthMm) / focalLengthMm;
+	}
+	function requiredFNumber(focalLengthMm, focusDistanceMm, targetDistanceMm, circleOfConfusionMm) {
+		return focalLengthMm * focalLengthMm * Math.abs(focusDistanceMm - targetDistanceMm) / (circleOfConfusionMm * targetDistanceMm * (focusDistanceMm - focalLengthMm));
+	}
+	function depthOfField(focalLengthMm, focusDistanceMm, fNumber, circleOfConfusionMm) {
+		const focalSquared = focalLengthMm * focalLengthMm;
+		const numerator = focalSquared * focusDistanceMm;
+		const spread = fNumber * circleOfConfusionMm * (focusDistanceMm - focalLengthMm);
+		const near = numerator / (focalSquared + spread);
+		const farDenominator = focalSquared - spread;
+		return {
+			near,
+			far: farDenominator > EPSILON ? numerator / farDenominator : Number.POSITIVE_INFINITY
+		};
+	}
+	function resolveFocusDistance(input) {
+		if (input.focusDistanceMm != null) return {
+			distanceMm: input.focusDistanceMm,
+			mode: "manual"
+		};
+		if (isPositiveFinite$1(input.near.distanceMm) && isPositiveFinite$1(input.far.distanceMm) && input.near.distanceMm < input.far.distanceMm) {
+			const near = input.near.distanceMm;
+			const far = input.far.distanceMm;
+			return {
+				distanceMm: 2 * near * far / (near + far),
+				mode: "automatic"
+			};
+		}
+		return {
+			distanceMm: null,
+			mode: "automatic"
+		};
+	}
+	function apertureLimitedMaximumFocalLength(focusDistanceMm, nearDistanceMm, farDistanceMm, circleOfConfusionMm, maximumFNumber) {
+		if (maximumFNumber == null) return Number.POSITIVE_INFINITY;
+		const nearCoefficient = Math.abs(focusDistanceMm - nearDistanceMm) / nearDistanceMm;
+		const farCoefficient = Math.abs(farDistanceMm - focusDistanceMm) / farDistanceMm;
+		const blurCoefficient = Math.max(nearCoefficient, farCoefficient);
+		if (blurCoefficient <= EPSILON) return Number.POSITIVE_INFINITY;
+		const nc = maximumFNumber * circleOfConfusionMm;
+		return (-nc + Math.sqrt(nc * nc + 4 * blurCoefficient * nc * focusDistanceMm)) / (2 * blurCoefficient);
+	}
+	function validate(input) {
+		const errors = [];
+		if (!input.camera.model.trim()) errors.push("请选择或填写相机型号。");
+		if (!isPositiveFinite$1(input.camera.horizontalPixels)) errors.push("横向像素数必须大于 0。");
+		if (!isPositiveFinite$1(input.camera.rows)) errors.push("相机行数必须大于 0。");
+		if (!isPositiveFinite$1(input.camera.pixelPitchUm)) errors.push("像元尺寸必须大于 0。");
+		if (!isPositiveFinite$1(input.near.distanceMm)) errors.push("近端工作面距离必须大于 0。");
+		if (input.focusDistanceMm != null && !isPositiveFinite$1(input.focusDistanceMm)) errors.push("对焦距离必须大于 0，或留空自动计算。");
+		if (!isPositiveFinite$1(input.far.distanceMm)) errors.push("远端工作面距离必须大于 0。");
+		if (!isPositiveFinite$1(input.near.requiredFovMm)) errors.push("近端视场需求必须大于 0。");
+		if (!isPositiveFinite$1(input.far.requiredFovMm)) errors.push("远端视场需求必须大于 0。");
+		if (!isNonNegativeFinite(input.fovMarginPercent)) errors.push("视场设计余量不能为负数。");
+		if (input.maxObjectPixelMm != null && !isPositiveFinite$1(input.maxObjectPixelMm)) errors.push("分辨率要求必须大于 0，或留空表示不约束。");
+		if (input.maximumFNumber != null && !isPositiveFinite$1(input.maximumFNumber)) errors.push("最大允许 F 值必须大于 0，或留空表示不约束。");
+		if (isPositiveFinite$1(input.near.distanceMm) && isPositiveFinite$1(input.far.distanceMm) && !(input.near.distanceMm < input.far.distanceMm)) errors.push("必须满足：近端工作面 < 远端工作面。");
+		if (isPositiveFinite$1(input.near.distanceMm) && input.focusDistanceMm != null && isPositiveFinite$1(input.focusDistanceMm) && isPositiveFinite$1(input.far.distanceMm) && !(input.near.distanceMm < input.focusDistanceMm && input.focusDistanceMm < input.far.distanceMm)) errors.push("必须满足：近端工作面 < 对焦面 < 远端工作面。");
+		if (input.motion?.enabled) {
+			if (!isPositiveFinite$1(input.motion.maximumSpeedKmh ?? NaN)) errors.push("启用运动采样后，最大运行速度必须大于 0。");
+			if (!isPositiveFinite$1(input.motion.longitudinalSampleMm ?? NaN)) errors.push("启用运动采样后，目标纵向采样必须大于 0。");
+		}
+		return errors;
+	}
+	function solveMotion(input) {
+		if (!input.motion?.enabled) return {
+			status: "not-requested",
+			requiredLineRateKhz: null,
+			theoreticalLinePeriodUs: null,
+			availableLineRateKhz: input.camera.maxLineRateKhz ?? null,
+			message: "未启用运动方向采样校核。"
+		};
+		const speed = input.motion.maximumSpeedKmh ?? NaN;
+		const sample = input.motion.longitudinalSampleMm ?? NaN;
+		if (!isPositiveFinite$1(speed) || !isPositiveFinite$1(sample)) return {
+			status: "unknown",
+			requiredLineRateKhz: null,
+			theoreticalLinePeriodUs: null,
+			availableLineRateKhz: input.camera.maxLineRateKhz ?? null,
+			message: "运动采样输入不完整，无法判定。"
+		};
+		const requiredLineRateKhz = speed / 3.6 / sample;
+		const theoreticalLinePeriodUs = 1e3 / requiredLineRateKhz;
+		const available = input.camera.maxLineRateKhz;
+		if (!isPositiveFinite$1(available ?? NaN)) return {
+			status: "unknown",
+			requiredLineRateKhz,
+			theoreticalLinePeriodUs,
+			availableLineRateKhz: null,
+			message: "相机设计最高行频未提供，无法完成通过判定。"
+		};
+		const pass = requiredLineRateKhz <= available + EPSILON;
+		return {
+			status: pass ? "pass" : "fail",
+			requiredLineRateKhz,
+			theoreticalLinePeriodUs,
+			availableLineRateKhz: available,
+			message: pass ? "设计最高行频能够覆盖目标纵向采样。" : "设计最高行频不足，指定相机无法覆盖目标纵向采样。"
+		};
+	}
+	function incompleteResult(input, validationErrors) {
+		const focus = resolveFocusDistance(input);
+		return {
+			status: "incomplete",
+			statusMessage: "请先修正输入项和工作面距离关系。",
+			validationErrors,
+			sensorWidthMm: NaN,
+			designCircleOfConfusionUm: NaN,
+			referenceCircleOfConfusionUm: NaN,
+			focalRangeMm: {
+				minimum: null,
+				maximum: null
+			},
+			targetWorkIntervalMm: {
+				near: input.near.distanceMm,
+				far: input.far.distanceMm
+			},
+			resolvedFocusDistanceMm: focus.distanceMm,
+			focusMode: focus.mode,
+			recommended: null,
+			candidates: [],
+			rankedCandidates: [],
+			motion: solveMotion(input),
+			assumptions: {
+				distanceDatum: "物方主平面",
+				opticalModel: "有限共轭理想薄透镜",
+				numericalLabel: "理论选型值",
+				diffractionReference: "550 nm 可见光参考波长",
+				focusMethod: focus.mode === "automatic" ? "近远端弥散圆平衡的精确解" : "用户指定对焦距离"
+			}
+		};
+	}
+	function solve2DDesign(input) {
+		const validationErrors = validate(input);
+		if (validationErrors.length > 0) return incompleteResult(input, validationErrors);
+		const standardFocalLengths = input.standardFocalLengthsMm ?? DEFAULT_STANDARD_FOCAL_LENGTHS_MM;
+		const designMultiplier = input.designCircleMultiplier ?? 2;
+		const referenceMultiplier = input.referenceCircleMultiplier ?? 3;
+		const wavelengthNm = input.referenceWavelengthNm ?? 550;
+		const pixelPitchMm = input.camera.pixelPitchUm / 1e3;
+		const sensorWidthMm = input.camera.horizontalPixels * pixelPitchMm;
+		const designCircleMm = pixelPitchMm * designMultiplier;
+		const referenceCircleMm = pixelPitchMm * referenceMultiplier;
+		const focus = resolveFocusDistance(input);
+		const focusDistanceMm = focus.distanceMm;
+		const marginFactor = 1 + input.fovMarginPercent / 100;
+		const nearRequiredWithMargin = input.near.requiredFovMm * marginFactor;
+		const farRequiredWithMargin = input.far.requiredFovMm * marginFactor;
+		const fovMaximumNear = sensorWidthMm * input.near.distanceMm / (nearRequiredWithMargin + sensorWidthMm);
+		const fovMaximumFar = sensorWidthMm * input.far.distanceMm / (farRequiredWithMargin + sensorWidthMm);
+		const apertureMaximum = apertureLimitedMaximumFocalLength(focusDistanceMm, input.near.distanceMm, input.far.distanceMm, designCircleMm, input.maximumFNumber);
+		const focalMaximum = Math.min(fovMaximumNear, fovMaximumFar, apertureMaximum, input.near.distanceMm);
+		const focalMinimum = input.maxObjectPixelMm == null ? null : pixelPitchMm * input.far.distanceMm / (input.maxObjectPixelMm + pixelPitchMm);
+		const candidates = standardFocalLengths.filter((value) => isPositiveFinite$1(value)).map((focalLengthMm) => {
+			const failureCodes = [];
+			const reasons = [];
+			const validConjugate = focalLengthMm < input.near.distanceMm;
+			if (!validConjugate) {
+				failureCodes.push("FOCAL_NOT_BELOW_OBJECT_DISTANCE");
+				reasons.push("焦距必须小于近端物距");
+			}
+			const makePlane = (distanceMm, requiredFovMm) => {
+				const actualFovMm = validConjugate ? fieldOfViewMm(sensorWidthMm, distanceMm, focalLengthMm) : NaN;
+				const requiredFovWithMarginMm = requiredFovMm == null ? null : requiredFovMm * marginFactor;
+				return {
+					distanceMm,
+					requiredFovMm,
+					requiredFovWithMarginMm,
+					actualFovMm,
+					remainingFovMm: requiredFovWithMarginMm == null ? null : actualFovMm - requiredFovWithMarginMm,
+					objectPixelMm: validConjugate ? objectPixelMm(pixelPitchMm, distanceMm, focalLengthMm) : NaN
+				};
+			};
+			const near = makePlane(input.near.distanceMm, input.near.requiredFovMm);
+			const focusPlane = makePlane(focusDistanceMm, null);
+			const far = makePlane(input.far.distanceMm, input.far.requiredFovMm);
+			if (validConjugate && near.actualFovMm + EPSILON < nearRequiredWithMargin) {
+				failureCodes.push("NEAR_FOV_SHORTFALL");
+				reasons.push(`近端视场不足 ${Math.abs(near.remainingFovMm ?? 0).toFixed(1)} mm`);
+			}
+			if (validConjugate && far.actualFovMm + EPSILON < farRequiredWithMargin) {
+				failureCodes.push("FAR_FOV_SHORTFALL");
+				reasons.push(`远端视场不足 ${Math.abs(far.remainingFovMm ?? 0).toFixed(1)} mm`);
+			}
+			if (validConjugate && input.maxObjectPixelMm != null && far.objectPixelMm > input.maxObjectPixelMm + EPSILON) {
+				failureCodes.push("OBJECT_PIXEL_EXCEEDED");
+				reasons.push(`远端像素当量超限 ${(far.objectPixelMm - input.maxObjectPixelMm).toFixed(3)} mm/px`);
+			}
+			const requiredNearN = validConjugate ? requiredFNumber(focalLengthMm, focusDistanceMm, input.near.distanceMm, designCircleMm) : NaN;
+			const requiredFarN = validConjugate ? requiredFNumber(focalLengthMm, focusDistanceMm, input.far.distanceMm, designCircleMm) : NaN;
+			const requiredN = Math.max(requiredNearN, requiredFarN);
+			const operatingN = input.maximumFNumber ?? requiredN;
+			if (validConjugate && input.maximumFNumber != null && requiredN > input.maximumFNumber + EPSILON) {
+				failureCodes.push("F_NUMBER_EXCEEDED");
+				reasons.push(`景深需至少 F/${requiredN.toFixed(1)}，超过上限 F/${input.maximumFNumber.toFixed(1)}`);
+			}
+			const designDof = validConjugate ? depthOfField(focalLengthMm, focusDistanceMm, operatingN, designCircleMm) : {
+				near: NaN,
+				far: NaN
+			};
+			const referenceDof = validConjugate ? depthOfField(focalLengthMm, focusDistanceMm, operatingN, referenceCircleMm) : {
+				near: NaN,
+				far: NaN
+			};
+			const airyDiameterUm = 2.44 * (wavelengthNm / 1e3) * operatingN;
+			const feasible = failureCodes.length === 0;
+			const diffractionReview = feasible && airyDiameterUm > designCircleMm * 1e3 + EPSILON;
+			if (feasible) reasons.push(diffractionReview ? "硬约束满足，衍射需复核" : "全部硬约束满足");
+			return {
+				focalLengthMm,
+				requiredFNumber: requiredN,
+				operatingFNumber: operatingN,
+				designDofNearMm: designDof.near,
+				designDofFarMm: designDof.far,
+				referenceDofNearMm: referenceDof.near,
+				referenceDofFarMm: referenceDof.far,
+				airyDiameterUm,
+				diffractionReview,
+				feasible,
+				failureCodes,
+				reasons,
+				near,
+				focus: focusPlane,
+				far
+			};
+		});
+		const rankedCandidates = [...candidates].sort((left, right) => {
+			if (left.feasible !== right.feasible) return left.feasible ? -1 : 1;
+			if (left.diffractionReview !== right.diffractionReview) return left.diffractionReview ? 1 : -1;
+			if (left.focalLengthMm !== right.focalLengthMm) return right.focalLengthMm - left.focalLengthMm;
+			return left.requiredFNumber - right.requiredFNumber;
+		});
+		const recommended = rankedCandidates.find((candidate) => candidate.feasible) ?? null;
+		const motion = solveMotion(input);
+		let status;
+		let statusMessage;
+		if (!recommended) {
+			status = "none";
+			statusMessage = "没有标准焦距能够同时满足视场、分辨率和光圈硬约束。";
+		} else if (motion.status === "fail") {
+			status = "none";
+			statusMessage = "光学候选可行，但指定相机的设计最高行频不足。";
+		} else if (recommended.diffractionReview || motion.status === "unknown") {
+			status = "review";
+			statusMessage = "硬约束满足，但仍有衍射或相机行频信息需要复核。";
+		} else {
+			status = "feasible";
+			statusMessage = "至少一个标准焦距满足当前全部硬约束。";
+		}
+		return {
+			status,
+			statusMessage,
+			validationErrors,
+			sensorWidthMm,
+			designCircleOfConfusionUm: designCircleMm * 1e3,
+			referenceCircleOfConfusionUm: referenceCircleMm * 1e3,
+			focalRangeMm: {
+				minimum: focalMinimum,
+				maximum: focalMaximum > 0 ? focalMaximum : null
+			},
+			targetWorkIntervalMm: {
+				near: input.near.distanceMm,
+				far: input.far.distanceMm
+			},
+			resolvedFocusDistanceMm: focusDistanceMm,
+			focusMode: focus.mode,
+			recommended,
+			candidates,
+			rankedCandidates,
+			motion,
+			assumptions: {
+				distanceDatum: "物方主平面",
+				opticalModel: "有限共轭理想薄透镜",
+				numericalLabel: "理论选型值",
+				diffractionReference: `${wavelengthNm} nm 可见光参考波长`,
+				focusMethod: focus.mode === "automatic" ? "近远端弥散圆平衡的精确解" : "用户指定对焦距离"
+			}
+		};
+	}
+	//#endregion
+	//#region lib/optics/fov-cone-geometry.ts
+	var FOV_CONE_STAGE_ASPECT_RATIO = .86;
+	var WIDTH_UNITS = 100;
+	var HEIGHT_UNITS = WIDTH_UNITS / FOV_CONE_STAGE_ASPECT_RATIO;
+	var ORIGIN_X_UNITS = 7;
+	var RIGHT_MARGIN_UNITS = 8;
+	var VERTICAL_MARGIN_PERCENT = 8;
+	function isPositiveFinite(value) {
+		return Number.isFinite(value) && value > 0;
+	}
+	function buildFovConeGeometry(planes) {
+		if (planes.length === 0 || planes.some((plane) => !isPositiveFinite(plane.distanceMm) || !isPositiveFinite(plane.actualFovMm))) throw new Error("视场锥需要有效的物距和视场数据。");
+		const maximumDistanceMm = Math.max(...planes.map((plane) => plane.distanceMm));
+		const maximumHalfAngleSlope = Math.max(...planes.map((plane) => plane.actualFovMm / 2 / plane.distanceMm));
+		const maximumHalfExtentMm = maximumHalfAngleSlope * maximumDistanceMm;
+		const horizontalScale = (WIDTH_UNITS - ORIGIN_X_UNITS - RIGHT_MARGIN_UNITS) / maximumDistanceMm;
+		const verticalScale = HEIGHT_UNITS * (50 - VERTICAL_MARGIN_PERCENT) / 100 / maximumHalfExtentMm;
+		const scale = Math.min(horizontalScale, verticalScale);
+		const farXUnits = ORIGIN_X_UNITS + maximumDistanceMm * scale;
+		const farHalfHeightUnits = maximumHalfExtentMm * scale;
+		const rayLengthUnits = Math.hypot(maximumDistanceMm * scale, maximumHalfExtentMm * scale);
+		return {
+			originXPercent: ORIGIN_X_UNITS / WIDTH_UNITS * 100,
+			axisYPercent: 50,
+			farXPercent: farXUnits / WIDTH_UNITS * 100,
+			farHalfHeightPercent: farHalfHeightUnits / HEIGHT_UNITS * 100,
+			rayLengthPercent: rayLengthUnits / WIDTH_UNITS * 100,
+			rayAngleDeg: Math.atan(maximumHalfAngleSlope) * 180 / Math.PI,
+			fullViewAngleDeg: 2 * Math.atan(maximumHalfAngleSlope) * 180 / Math.PI,
+			planes: planes.map((plane) => {
+				const halfHeightUnits = plane.actualFovMm / 2 * scale;
+				return {
+					...plane,
+					leftPercent: (ORIGIN_X_UNITS + plane.distanceMm * scale) / WIDTH_UNITS * 100,
+					heightPercent: plane.actualFovMm * scale / HEIGHT_UNITS * 100,
+					halfHeightPercent: halfHeightUnits / HEIGHT_UNITS * 100,
+					fullViewAngleDeg: 2 * Math.atan(plane.actualFovMm / 2 / plane.distanceMm) * 180 / Math.PI
+				};
+			})
+		};
+	}
+	//#endregion
+	//#region standalone/main.ts
+	var statusLabels = {
+		incomplete: "待完善输入",
+		feasible: "存在可行方案",
+		review: "可行但需复核",
+		none: "无可行方案"
+	};
+	function element(id) {
+		const found = document.getElementById(id);
+		if (!found) throw new Error(`缺少页面元素：${id}`);
+		return found;
+	}
+	function numericValue(id, optional = false) {
+		const raw = element(id).value.trim();
+		if (optional && raw === "") return null;
+		return Number(raw);
+	}
+	function format(value, digits = 1) {
+		if (value == null || Number.isNaN(value)) return "—";
+		if (value === Number.POSITIVE_INFINITY) return "∞";
+		return value.toLocaleString("zh-CN", {
+			minimumFractionDigits: digits,
+			maximumFractionDigits: digits
+		});
+	}
+	function escapeHtml(value) {
+		return value.replace(/[&<>"]/g, (character) => ({
+			"&": "&amp;",
+			"<": "&lt;",
+			">": "&gt;",
+			"\"": "&quot;"
+		})[character] ?? character);
+	}
+	function focalRangeText(range, digits = 1) {
+		if (range.minimum != null && range.maximum != null && range.minimum > range.maximum) return "无连续可行区间";
+		if (range.minimum == null && range.maximum != null) return `≤ ${format(range.maximum, digits)} mm`;
+		if (range.minimum != null && range.maximum == null) return `≥ ${format(range.minimum, digits)} mm`;
+		if (range.minimum == null || range.maximum == null) return "—";
+		return `${format(range.minimum, digits)}–${format(range.maximum, digits)} mm`;
+	}
+	function noResultDetail(result) {
+		if (result.validationErrors.length > 0) return result.validationErrors[0];
+		const apertureOnly = result.candidates.filter((candidate) => candidate.failureCodes.length === 1 && candidate.failureCodes.includes("F_NUMBER_EXCEEDED")).sort((left, right) => left.requiredFNumber - right.requiredFNumber)[0];
+		const resolutionOnly = result.candidates.filter((candidate) => candidate.failureCodes.length === 1 && candidate.failureCodes.includes("OBJECT_PIXEL_EXCEEDED") && candidate.requiredFNumber <= candidate.operatingFNumber).sort((left, right) => right.focalLengthMm - left.focalLengthMm)[0];
+		const focus = result.resolvedFocusDistanceMm == null ? "" : `${result.focusMode === "automatic" ? "自动" : "手动"}对焦 ${format(result.resolvedFocusDistanceMm, 0)} mm。`;
+		if (apertureOnly) {
+			const resolutionTradeoff = resolutionOnly ? ` ${format(resolutionOnly.focalLengthMm, 1)} mm 可在 F/${format(resolutionOnly.operatingFNumber, 1)} 覆盖景深，但远端像素当量 ${format(resolutionOnly.far.objectPixelMm, 3)} mm/px 被分辨率约束淘汰。` : "";
+			return `${focus}${format(apertureOnly.focalLengthMm, 1)} mm 已满足视场和分辨率，但景深至少需要 F/${format(apertureOnly.requiredFNumber, 1)}，超过设定的 F/${format(apertureOnly.operatingFNumber, 1)} 上限。${resolutionTradeoff}`;
+		}
+		return `${focus}当前标准焦距无法同时满足视场、分辨率、景深光圈和运动采样约束。`;
+	}
+	function readInput() {
+		const custom = element("camera-source").value === "custom";
+		return {
+			camera: {
+				model: element("camera-model").value.trim(),
+				horizontalPixels: numericValue("pixels") ?? 0,
+				rows: numericValue("rows") ?? 0,
+				pixelPitchUm: numericValue("pitch") ?? 0,
+				maxLineRateKhz: numericValue("line-rate", true),
+				sensorType: custom ? void 0 : "彩色线扫",
+				dataInterface: custom ? void 0 : "GigE",
+				lensMount: custom ? void 0 : "M42"
+			},
+			near: {
+				distanceMm: numericValue("near-distance") ?? 0,
+				requiredFovMm: numericValue("near-fov") ?? 0
+			},
+			focusDistanceMm: numericValue("focus-distance", true),
+			far: {
+				distanceMm: numericValue("far-distance") ?? 0,
+				requiredFovMm: numericValue("far-fov") ?? 0
+			},
+			fovMarginPercent: numericValue("margin") ?? 0,
+			maxObjectPixelMm: numericValue("max-resolution", true),
+			maximumFNumber: numericValue("max-f-number", true),
+			motion: {
+				enabled: element("motion-enabled").checked,
+				maximumSpeedKmh: numericValue("speed", true),
+				longitudinalSampleMm: numericValue("sample", true)
+			}
+		};
+	}
+	function motionLabel(status) {
+		return {
+			"not-requested": "未启用",
+			pass: "满足",
+			fail: "不满足",
+			unknown: "无法判定"
+		}[status];
+	}
+	function buildSections(input, result) {
+		const recommendation = result.recommended;
+		const marginFactor = 1 + input.fovMarginPercent / 100;
+		return [
+			{
+				title: "相机参数",
+				rows: [
+					{
+						label: "相机型号",
+						value: input.camera.model
+					},
+					{
+						label: "相机分辨率",
+						value: `${format(input.camera.horizontalPixels, 0)} × ${format(input.camera.rows, 0)}`
+					},
+					{
+						label: "像元尺寸",
+						value: `${format(input.camera.pixelPitchUm, 2)} μm`
+					},
+					{
+						label: "传感器宽度",
+						value: `${format(result.sensorWidthMm, 3)} mm`
+					},
+					{
+						label: "设计最高行频",
+						value: input.camera.maxLineRateKhz == null ? "未提供" : `${format(input.camera.maxLineRateKhz, 2)} kHz`
+					},
+					{
+						label: "数值标识",
+						value: "理论选型值"
+					}
+				]
+			},
+			{
+				title: "设计输入",
+				rows: [
+					{
+						label: "目标工作区间",
+						value: `${format(input.near.distanceMm, 0)}–${format(input.far.distanceMm, 0)} mm`
+					},
+					{
+						label: "对焦位置",
+						value: `${format(result.resolvedFocusDistanceMm, 0)} mm（${result.focusMode === "automatic" ? "自动平衡近远端" : "手动指定"}）`
+					},
+					{
+						label: "近端视场需求",
+						value: `${format(input.near.requiredFovMm, 0)} → ${format(input.near.requiredFovMm * marginFactor, 0)} mm`
+					},
+					{
+						label: "远端视场需求",
+						value: `${format(input.far.requiredFovMm, 0)} → ${format(input.far.requiredFovMm * marginFactor, 0)} mm`
+					},
+					{
+						label: "视场余量 / 最大像素当量",
+						value: `${format(input.fovMarginPercent, 1)} % / ${input.maxObjectPixelMm == null ? "未约束" : `${format(input.maxObjectPixelMm, 3)} mm/px`}`
+					},
+					{
+						label: "最大允许 F 值",
+						value: input.maximumFNumber == null ? "未约束" : `F/${format(input.maximumFNumber, 1)}`
+					}
+				]
+			},
+			{
+				title: "光学选型与计算结果",
+				rows: [
+					{
+						label: "连续焦距可行区间",
+						value: focalRangeText(result.focalRangeMm, 2)
+					},
+					{
+						label: "推荐标准焦距",
+						value: recommendation ? `${format(recommendation.focalLengthMm, 1)} mm` : "无（详见候选表）"
+					},
+					{
+						label: "景深最低 / 建议工作光圈",
+						value: recommendation ? `≥ F/${format(recommendation.requiredFNumber, 2)} / F/${format(recommendation.operatingFNumber, 2)}` : "—"
+					},
+					{
+						label: "理论景深范围（工作光圈，2×像元）",
+						value: recommendation ? `${format(recommendation.designDofNearMm, 0)}–${format(recommendation.designDofFarMm, 0)} mm` : "—"
+					},
+					{
+						label: "参考景深范围（3×像元）",
+						value: recommendation ? `${format(recommendation.referenceDofNearMm, 0)}–${format(recommendation.referenceDofFarMm, 0)} mm` : "—"
+					},
+					{
+						label: "近 / 对焦 / 远像素当量",
+						value: recommendation ? `${format(recommendation.near.objectPixelMm, 3)} / ${format(recommendation.focus.objectPixelMm, 3)} / ${format(recommendation.far.objectPixelMm, 3)} mm/px` : "—"
+					}
+				]
+			},
+			{
+				title: "运动采样与提示",
+				rows: [
+					{
+						label: "最大运行速度",
+						value: input.motion?.enabled ? `${format(input.motion.maximumSpeedKmh, 1)} km/h` : "未启用"
+					},
+					{
+						label: "目标纵向采样",
+						value: input.motion?.enabled ? `${format(input.motion.longitudinalSampleMm, 3)} mm/line` : "未启用"
+					},
+					{
+						label: "所需行频",
+						value: result.motion.requiredLineRateKhz == null ? "—" : `${format(result.motion.requiredLineRateKhz, 3)} kHz`
+					},
+					{
+						label: "理论行周期",
+						value: result.motion.theoreticalLinePeriodUs == null ? "—" : `${format(result.motion.theoreticalLinePeriodUs, 2)} μs`
+					},
+					{
+						label: "方案状态",
+						value: statusLabels[result.status]
+					},
+					{
+						label: "复核提示",
+						value: recommendation?.diffractionReview ? "衍射、具体镜头主平面与 MTF" : "具体镜头主平面与 MTF"
+					}
+				]
+			}
+		];
+	}
+	function renderStatus(target, status) {
+		target.textContent = statusLabels[status];
+		target.className = `standalone-status scheme-status--${status}`;
+	}
+	function renderCone(result) {
+		const recommendation = result.recommended;
+		const ids = [
+			"cone-near",
+			"cone-focus",
+			"cone-far"
+		];
+		const labels = [
+			"近端",
+			"对焦",
+			"远端"
+		];
+		const stage = element("cone-stage");
+		const legend = element("cone-legend");
+		const empty = element("cone-no-result");
+		if (!recommendation) {
+			stage.hidden = true;
+			legend.hidden = true;
+			empty.hidden = false;
+			element("cone-angle").textContent = "物方主平面基准";
+			ids.forEach((id) => {
+				element(id).hidden = true;
+			});
+			return;
+		}
+		stage.hidden = false;
+		legend.hidden = false;
+		empty.hidden = true;
+		const geometry = buildFovConeGeometry([
+			recommendation.near,
+			recommendation.focus,
+			recommendation.far
+		]);
+		stage.style.setProperty("--cone-origin-x", `${geometry.originXPercent}%`);
+		stage.style.setProperty("--cone-axis-y", `${geometry.axisYPercent}%`);
+		stage.style.setProperty("--cone-far-x", `${geometry.farXPercent}%`);
+		stage.style.setProperty("--cone-far-half", `${geometry.farHalfHeightPercent}%`);
+		stage.style.setProperty("--cone-ray-length", `${geometry.rayLengthPercent}%`);
+		stage.style.setProperty("--cone-ray-angle", `${geometry.rayAngleDeg}deg`);
+		stage.style.setProperty("--cone-ray-angle-negative", `${-geometry.rayAngleDeg}deg`);
+		element("cone-angle").textContent = `水平全视场角 ${format(geometry.fullViewAngleDeg, 1)}° · 物方主平面基准`;
+		geometry.planes.forEach((plane, index) => {
+			const target = element(ids[index]);
+			target.hidden = false;
+			target.style.setProperty("--plane-left", `${plane.leftPercent}%`);
+			target.style.setProperty("--plane-height", `${plane.heightPercent}%`);
+			target.title = `${labels[index]}：${format(plane.distanceMm, 0)} mm，FOV ${format(plane.actualFovMm, 0)} mm`;
+			element(`cone-legend-${index + 1}-distance`).textContent = `${labels[index]} · ${format(plane.distanceMm, 0)} mm`;
+			element(`cone-legend-${index + 1}-fov`).textContent = `FOV ${format(plane.actualFovMm, 0)} mm`;
+		});
+	}
+	function renderCandidates(result) {
+		const recommended = result.recommended?.focalLengthMm;
+		element("candidate-count").textContent = `${result.candidates.filter((candidate) => candidate.feasible).length} / ${result.candidates.length} 可行`;
+		element("candidate-body").innerHTML = result.candidates.map((candidate) => {
+			const selected = candidate.focalLengthMm === recommended;
+			const state = candidate.feasible ? candidate.diffractionReview ? "review" : "pass" : "fail";
+			const stateText = candidate.feasible ? candidate.diffractionReview ? "需复核" : "可行" : "不满足";
+			return `<tr class="${selected ? "recommended" : ""}"><td><strong>${format(candidate.focalLengthMm, 1)} mm</strong>${selected ? "<em>推荐</em>" : ""}</td><td>${format(candidate.near.actualFovMm, 0)} / ${format(candidate.near.requiredFovWithMarginMm, 0)} mm</td><td>${format(candidate.far.actualFovMm, 0)} / ${format(candidate.far.requiredFovWithMarginMm, 0)} mm</td><td>${format(candidate.far.objectPixelMm, 3)} mm/px</td><td>≥ F/${format(candidate.requiredFNumber, 1)}<small>设定 F/${format(candidate.operatingFNumber, 1)}</small></td><td><span class="candidate-status ${state}">${stateText}</span><small>${escapeHtml(candidate.reasons.join("；"))}</small></td></tr>`;
+		}).join("");
+	}
+	function renderParameters(sections) {
+		element("parameter-grid").innerHTML = sections.map((section) => `<div class="parameter-group"><h3>${escapeHtml(section.title)}</h3><dl>${section.rows.map((row) => `<div><dt>${escapeHtml(row.label)}</dt><dd>${escapeHtml(row.value)}</dd></div>`).join("")}</dl></div>`).join("");
+	}
+	var committedInput = readInput();
+	var currentResult = solve2DDesign(committedInput);
+	var currentSections = buildSections(committedInput, currentResult);
+	function render(input, result) {
+		renderStatus(element("top-status"), result.status);
+		renderStatus(element("result-status"), result.status);
+		element("status-message").textContent = result.statusMessage;
+		const recommendation = result.recommended;
+		element("recommended").textContent = recommendation ? `${format(recommendation.focalLengthMm, 1)} mm` : "暂无推荐";
+		element("focal-range").textContent = focalRangeText(result.focalRangeMm, 1);
+		element("f-number").textContent = recommendation ? `F/${format(recommendation.operatingFNumber, 1)}` : "—";
+		element("required-f-number").textContent = recommendation ? `≥ F/${format(recommendation.requiredFNumber, 1)}` : "—";
+		element("work-range").textContent = `${format(input.near.distanceMm, 0)}–${format(input.far.distanceMm, 0)} mm`;
+		element("dof-range").textContent = recommendation ? `${format(recommendation.designDofNearMm, 0)}–${format(recommendation.designDofFarMm, 0)} mm` : "—";
+		element("focus-result").textContent = `${format(result.resolvedFocusDistanceMm, 0)} mm · ${result.focusMode === "automatic" ? "自动" : "手动"}`;
+		element("near-pixel").textContent = recommendation ? `${format(recommendation.near.objectPixelMm, 3)} mm/px` : "—";
+		element("far-pixel").textContent = recommendation ? `${format(recommendation.far.objectPixelMm, 3)} mm/px` : "—";
+		element("required-line-rate").textContent = result.motion.requiredLineRateKhz == null ? "未校核" : `${format(result.motion.requiredLineRateKhz, 2)} kHz`;
+		element("motion-status").textContent = motionLabel(result.motion.status);
+		element("focus-method").textContent = result.assumptions.focusMethod;
+		element("diffraction-warning").hidden = !recommendation?.diffractionReview;
+		element("diffraction-text").textContent = recommendation ? `550 nm 参考下理论艾里斑约 ${format(recommendation.airyDiameterUm, 1)} μm，大于设计弥散圆 ${format(result.designCircleOfConfusionUm, 1)} μm；仅提示复核，不单独否决。` : "";
+		element("no-result").hidden = Boolean(recommendation);
+		element("no-result").textContent = noResultDetail(result);
+		renderCone(result);
+		renderCandidates(result);
+		currentSections = buildSections(input, result);
+		renderParameters(currentSections);
+	}
+	function setStale(stale) {
+		element("dirty-label").hidden = !stale;
+		element("stale-banner").hidden = !stale;
+		element("parameter-stale").hidden = !stale;
+		[
+			"copy-png",
+			"download-png",
+			"print-pdf"
+		].forEach((id) => {
+			element(id).disabled = stale;
+		});
+		element("candidate-count").className = stale ? "output-age output-age--stale" : "output-age";
+		if (stale) element("candidate-count").textContent = "上次有效结果";
+	}
+	function updateLiveDerived() {
+		element("sensor-width").textContent = `${format((numericValue("pixels") ?? 0) * (numericValue("pitch") ?? 0) / 1e3, 3)} mm`;
+	}
+	function applyCameraSource() {
+		const custom = element("camera-source").value === "custom";
+		[
+			"camera-model",
+			"pixels",
+			"rows",
+			"pitch",
+			"line-rate"
+		].forEach((id) => {
+			element(id).readOnly = !custom;
+		});
+		if (!custom) {
+			element("camera-model").value = "MV-CL042-91GC";
+			element("pixels").value = "4096";
+			element("rows").value = "2";
+			element("pitch").value = "7";
+			element("line-rate").value = "28";
+		} else {
+			element("camera-model").value = "自定义相机";
+			element("line-rate").value = "";
+		}
+		updateLiveDerived();
+		setStale(true);
+	}
+	document.querySelectorAll("input, select").forEach((control) => {
+		control.addEventListener("input", () => {
+			updateLiveDerived();
+			setStale(true);
+			element("export-message").hidden = true;
+		});
+	});
+	element("camera-source").addEventListener("change", applyCameraSource);
+	element("motion-enabled").addEventListener("change", () => {
+		element("motion-fields").hidden = !element("motion-enabled").checked;
+	});
+	element("calculate").addEventListener("click", () => {
+		const attemptedInput = readInput();
+		const attemptedResult = solve2DDesign(attemptedInput);
+		if (attemptedResult.status === "incomplete") {
+			const validation = element("validation");
+			validation.hidden = false;
+			validation.innerHTML = `<strong>请修正以下输入</strong><ul>${attemptedResult.validationErrors.map((error) => `<li>${escapeHtml(error)}</li>`).join("")}</ul>`;
+			return;
+		}
+		committedInput = attemptedInput;
+		currentResult = attemptedResult;
+		element("validation").hidden = true;
+		setStale(false);
+		render(committedInput, currentResult);
+		const message = element("export-message");
+		message.textContent = "计算结果已更新，可以导出。";
+		message.hidden = false;
+	});
+	function createPng() {
+		const canvas = document.createElement("canvas");
+		canvas.width = 1800;
+		canvas.height = 1120;
+		const context = canvas.getContext("2d");
+		if (!context) return Promise.reject(/* @__PURE__ */ new Error("当前浏览器无法创建图片画布。"));
+		const positions = [
+			[60, 190],
+			[930, 190],
+			[60, 620],
+			[930, 620]
+		];
+		context.fillStyle = "#fff";
+		context.fillRect(0, 0, canvas.width, canvas.height);
+		context.fillStyle = "#18232e";
+		context.font = "700 42px 'Microsoft YaHei','Segoe UI',sans-serif";
+		context.fillText("光学方案参数表", 60, 78);
+		context.fillStyle = "#66727f";
+		context.font = "22px 'Microsoft YaHei','Segoe UI',sans-serif";
+		context.fillText("二维线扫相机 · 理论选型值 · 距离基准：物方主平面", 60, 122);
+		context.fillStyle = "#9a5a18";
+		context.font = "700 22px 'Microsoft YaHei','Segoe UI',sans-serif";
+		context.textAlign = "right";
+		context.fillText(statusLabels[currentResult.status], 1740, 82);
+		context.textAlign = "left";
+		const clipped = (text, x, y, width) => {
+			let output = text;
+			while (context.measureText(output).width > width && output.length > 2) output = `${output.slice(0, -2)}…`;
+			context.fillText(output, x, y);
+		};
+		currentSections.slice(0, 4).forEach((section, index) => {
+			const [x, y] = positions[index];
+			context.strokeStyle = "#aeb8c2";
+			context.lineWidth = 2;
+			context.strokeRect(x, y, 810, 390);
+			context.fillStyle = "#e9edf1";
+			context.fillRect(x, y, 810, 48);
+			context.fillStyle = "#18232e";
+			context.font = "700 22px 'Microsoft YaHei','Segoe UI',sans-serif";
+			context.fillText(section.title, x + 18, y + 32);
+			section.rows.slice(0, 6).forEach((row, rowIndex) => {
+				const rowY = y + 48 + rowIndex * 57;
+				context.fillStyle = rowIndex % 2 ? "#fff" : "#f8f9fa";
+				context.fillRect(x, rowY, 810, 57);
+				context.strokeStyle = "#d8dee5";
+				context.lineWidth = 1;
+				context.beginPath();
+				context.moveTo(x, rowY);
+				context.lineTo(x + 810, rowY);
+				context.moveTo(x + 305, rowY);
+				context.lineTo(x + 305, rowY + 57);
+				context.stroke();
+				context.fillStyle = "#66727f";
+				context.font = "19px 'Microsoft YaHei','Segoe UI',sans-serif";
+				clipped(row.label, x + 16, rowY + 36, 270);
+				context.fillStyle = "#18232e";
+				context.font = "600 19px 'Microsoft YaHei','Segoe UI',sans-serif";
+				clipped(row.value, x + 325, rowY + 36, 455);
+			});
+		});
+		context.fillStyle = "#66727f";
+		context.font = "18px 'Microsoft YaHei','Segoe UI',sans-serif";
+		context.fillText("实际镜头需复核主平面、畸变、MTF 与装调误差。", 60, 1070);
+		return new Promise((resolve, reject) => canvas.toBlob((blob) => blob ? resolve(blob) : reject(/* @__PURE__ */ new Error("PNG 生成失败。")), "image/png"));
+	}
+	function showExportMessage(text) {
+		const message = element("export-message");
+		message.textContent = text;
+		message.hidden = false;
+	}
+	element("copy-png").addEventListener("click", async () => {
+		try {
+			const blob = await createPng();
+			if (!navigator.clipboard?.write || typeof ClipboardItem === "undefined") throw new Error("当前浏览器不支持直接复制图片，请使用“下载 PNG”。");
+			await navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]);
+			showExportMessage("参数表 PNG 已复制到剪贴板。");
+		} catch (error) {
+			showExportMessage(error instanceof Error ? error.message : "复制失败，请使用“下载 PNG”。");
+		}
+	});
+	element("download-png").addEventListener("click", async () => {
+		try {
+			const blob = await createPng();
+			const url = URL.createObjectURL(blob);
+			const anchor = document.createElement("a");
+			anchor.href = url;
+			anchor.download = `光学方案参数表-${committedInput.camera.model.replace(/[<>:"/\\|?*]/g, "_")}.png`;
+			anchor.click();
+			setTimeout(() => URL.revokeObjectURL(url), 0);
+			showExportMessage("参数表 PNG 已下载。");
+		} catch (error) {
+			showExportMessage(error instanceof Error ? error.message : "PNG 下载失败。");
+		}
+	});
+	element("print-pdf").addEventListener("click", () => window.print());
+	render(committedInput, currentResult);
+	setStale(false);
+	//#endregion
+})();
+
+  </script>
+</body>
+</html>
