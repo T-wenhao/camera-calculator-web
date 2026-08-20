@@ -5,9 +5,7 @@ pages:
   stage: deploy
   image: alpine:3.22
   tags:
-    - docker
-    - linux
-    - x86
+    - gpu
   before_script:
     - apk add --no-cache nodejs npm
   script:
