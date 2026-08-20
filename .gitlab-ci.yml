@@ -4,6 +4,10 @@ stages:
 pages:
   stage: deploy
   image: node:24-alpine
+  tags:
+    - docker
+    - linux
+    - x86
   cache:
     key: ${CI_COMMIT_REF_SLUG}
     paths:
