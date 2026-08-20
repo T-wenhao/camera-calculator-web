@@ -6,18 +6,18 @@
   <title>光学方案计算器 · 离线版</title>
   <style>
 <!-- INLINE_CSS -->
-  .standalone-note{margin:0 0 14px;padding:9px 12px;border:1px solid #cfdae4;border-radius:7px;color:#4f6578;background:#f4f8fb;font-size:9px}
+  .standalone-note{margin:0 0 14px;padding:9px 12px;border:1px solid #cfdae4;border-radius:7px;color:#4f6578;background:#f4f8fb;font-size: calc(9px * var(--work-text-scale, 1))}
   .standalone-camera-row{display:grid;grid-template-columns:180px 1fr;gap:12px;margin-bottom:15px}
-  .standalone-camera-row select,.standalone-camera-row input{min-height:39px;width:100%;padding:0 10px;border:1px solid var(--work-line-strong);border-radius:6px;color:var(--work-ink);background:#fff;font-size:11px;font-weight:650}
-  .standalone-camera-row label{display:grid;gap:6px;color:#4f5e6c;font-size:10px;font-weight:650}
+  .standalone-camera-row select,.standalone-camera-row input{min-height:39px;width:100%;padding:0 10px;border:1px solid var(--work-line-strong);border-radius:6px;color:var(--work-ink);background:#fff;font-size: calc(11px * var(--work-text-scale, 1));font-weight:650}
+  .standalone-camera-row label{display:grid;gap:6px;color:#4f5e6c;font-size: calc(10px * var(--work-text-scale, 1));font-weight:650}
   .standalone-camera-row input:not([readonly]){border-color:#dfd6b8;background:var(--work-input)}
-  .standalone-validation{margin-top:15px;padding:12px 14px;border:1px solid #edc3c3;border-radius:7px;color:var(--work-red);background:var(--work-red-soft);font-size:9px;line-height:1.6}
+  .standalone-validation{margin-top:15px;padding:12px 14px;border:1px solid #edc3c3;border-radius:7px;color:var(--work-red);background:var(--work-red-soft);font-size: calc(9px * var(--work-text-scale, 1));line-height:1.6}
   .standalone-motion{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
-  .standalone-result-value{margin:6px 0 0;color:var(--work-blue);font-size:35px;letter-spacing:-.055em}
-  .standalone-status{display:inline-flex;min-height:27px;align-items:center;padding:0 10px;border-radius:999px;font-size:10px;font-weight:700;white-space:nowrap}
+  .standalone-result-value{margin:6px 0 0;color:var(--work-blue);font-size: calc(35px * var(--work-text-scale, 1));letter-spacing:-.055em}
+  .standalone-status{display:inline-flex;min-height:27px;align-items:center;padding:0 10px;border-radius:999px;font-size: calc(10px * var(--work-text-scale, 1));font-weight:700;white-space:nowrap}
   .standalone-parameter-grid{display:grid;grid-template-columns:repeat(2,1fr);border-top:1px solid var(--work-line-strong);border-left:1px solid var(--work-line-strong)}
   .standalone-parameter-grid .parameter-group{min-width:0}
-  .standalone-footer{display:flex;justify-content:space-between;gap:20px;padding:18px 0;color:var(--work-muted);font-size:8px}
+  .standalone-footer{display:flex;justify-content:space-between;gap:20px;padding:18px 0;color:var(--work-muted);font-size: calc(8px * var(--work-text-scale, 1))}
   @media(max-width:760px){.standalone-camera-row,.standalone-motion,.standalone-parameter-grid{grid-template-columns:1fr}}
   </style>
 </head>
